@@ -149,16 +149,20 @@ docker-compose down -rmi all --volumes
 # -rmi all: Elimina las imágenes asociadas al contenedor
 # --volumes: Elimina los volumenes (eliminar persistencia)
 
-## Detener el despliegue con minikube
-kubectl stop
-
 ## Eliminar información relacionada con el despliegue
 kubectl delete 
 
-# sin parámetros elimina el clúster
+# sin parámetros elimina todos los namespaces
 # all --all: elimina pods, deployments, services, replicaSets
 # deployment [nombre]: elimina un deployment específico
 # service [nombre]: elimina un servicio específico
+
+## Detener el despliegue con minikube
+minikube stop
+
+## Limpiar la configuración de minikube
+minikube delete --all --purge
+
 ```
 
 ## 📝 Notas de Desarrollo
