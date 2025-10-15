@@ -1,0 +1,93 @@
+# .gitignore para app-php-crud
+# Aplicación PHP + MySQL + Docker + Kubernetes
+
+# =====================
+# DOCKER
+# =====================
+docker-compose.override.yml
+.dockerignore
+
+# =====================
+# KUBERNETES
+# =====================
+kubeconfig
+kubeconfig.yaml
+.kube/
+kubernetes/local/
+kubernetes/*.local.yaml
+
+# =====================
+# ENTORNO
+# =====================
+.env
+.env.local
+.env.*.local
+
+# =====================
+# IDE
+# =====================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+
+# =====================
+# LOGS & TEMP
+# =====================
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.bak
+.cache/
+
+# =====================
+# BASE DE DATOS
+# =====================
+mysql_data/
+data/
+backups/
+*.sql.gz
+*.sql.bak
+dump.sql
+
+# =====================
+# SEGURIDAD
+# =====================
+*.key
+*.pem
+*.crt
+secrets/
+private/
+
+# =====================
+# PHP
+# =====================
+vendor/
+composer.lock
+app/cache/
+app/tmp/
+
+# =====================
+# TESTING
+# =====================
+/tmp/ab-result-*.txt
+test-results/
+coverage/
+
+# =====================
+# OS
+# =====================
+.DS_Store
+Thumbs.db
+
+# =====================
+# PROYECTO ESPECÍFICO
+# =====================
+local-test.sh
+my-notes.txt
+debug-output.log
+config.local.php

@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: php-app
+  namespace: php-mysql
+spec:
+  replicas: 3
+  selector:
+    matchLabels: { app: php-app }
+  template:
+    metadata:
+      labels: { app: php-app }
+    spec:
+      # Espera a que MySQL responda, equivalente a depends_on con healthy
+      initContainers:
+        - name: wait-for-mysql
+          image: mysql:8.0
+          env:
+            - name: MYSQL_HOST
+              value: mysql-svc
+            - name: MYSQL_USER
+              valueFrom: { secretKeyRef: { name: db-secrets, key: MYSQL_USER } }
+            - name: MYSQL_PASSWORD
+              valueFrom: { secretKeyRef: { name: db-secrets, key: MYSQL_PASSWORD } }
+          command:
+            - bash
+            - -lc
+            - |
+              until mysql -h "${MYSQL_HOST}" -u"${MYSQL_USER}" -p"${MYSQL_PASSWORD}" -e "SELECT 1" >/dev/null 2>&1; do
+                echo "Esperando MySQL (${MYSQL_HOST})..."
+                sleep 3
+              done
+      containers:
+        - name: php
+          image: php-app:latest
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 80
+          env:
+            - name: MYSQL_HOST
+              value: mysql-svc
+            - name: MYSQL_DB
+              valueFrom: { secretKeyRef: { name: db-secrets, key: MYSQL_DATABASE } }
+            - name: MYSQL_USER
+              valueFrom: { secretKeyRef: { name: db-secrets, key: MYSQL_USER } }
+            - name: MYSQL_PASSWORD
+              valueFrom: { secretKeyRef: { name: db-secrets, key: MYSQL_PASSWORD } }
+      volumes: []

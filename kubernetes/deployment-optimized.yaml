@@ -1,0 +1,166 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: php-app
+  namespace: php-mysql
+spec:
+  replicas: 3
+  selector:
+    matchLabels: { app: php-app }
+  template:
+    metadata:
+      labels: { app: php-app }
+    spec:
+      # Espera a que MySQL responda, equivalente a depends_on con healthy
+      initContainers:
+        - name: wait-for-mysql
+          image: mysql:8.0
+          env:
+            - name: MYSQL_HOST
+              value: mysql-svc
+            - name: MYSQL_USER
+              valueFrom: { secretKeyRef: { name: db-secrets, key: MYSQL_USER } }
+            - name: MYSQL_PASSWORD
+              valueFrom: { secretKeyRef: { name: db-secrets, key: MYSQL_PASSWORD } }
+          command:
+            - bash
+            - -lc
+            - |
+              until mysql -h "${MYSQL_HOST}" -u"${MYSQL_USER}" -p"${MYSQL_PASSWORD}" -e "SELECT 1" >/dev/null 2>&1; do
+                echo "Esperando MySQL (${MYSQL_HOST})..."
+                sleep 3
+              done
+      containers:
+        - name: php
+          image: php-app:latest
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 80
+          env:
+            - name: MYSQL_HOST
+              value: mysql-svc
+            - name: MYSQL_DB
+              valueFrom: { secretKeyRef: { name: db-secrets, key: MYSQL_DATABASE } }
+            - name: MYSQL_USER
+              valueFrom: { secretKeyRef: { name: db-secrets, key: MYSQL_USER } }
+            - name: MYSQL_PASSWORD
+              valueFrom: { secretKeyRef: { name: db-secrets, key: MYSQL_PASSWORD } }
+          # ✅ OPTIMIZACIÓN 1: RESOURCE LIMITS
+          resources:
+            requests:
+              # CPU mínima garantizada
+              cpu: "250m"
+              # Memoria mínima garantizada
+              memory: "128Mi"
+            limits:
+              # CPU máxima permitida
+              cpu: "500m"
+              # Memoria máxima permitida
+              memory: "256Mi"
+          
+          # ✅ OPTIMIZACIÓN 2: HEALTH CHECKS
+          
+          # Liveness Probe: Verifica si el contenedor está vivo
+          # Si falla, Kubernetes reinicia el pod
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+              httpHeaders:
+              - name: User-Agent
+                value: k8s-liveness
+            initialDelaySeconds: 30  # Espera 30s antes de la primera verificación
+            periodSeconds: 10         # Verifica cada 10s
+            timeoutSeconds: 5         # Timeout de 5s
+            successThreshold: 1       # 1 éxito = contenedor saludable
+            failureThreshold: 3       # 3 fallos = reiniciar contenedor
+          
+          # Readiness Probe: Verifica si el contenedor está listo para recibir tráfico
+          # Si falla, Kubernetes quita el pod del Service
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+              httpHeaders:
+              - name: User-Agent
+                value: k8s-readiness
+            initialDelaySeconds: 10   # Espera 10s antes de la primera verificación
+            periodSeconds: 5          # Verifica cada 5s
+            timeoutSeconds: 3         # Timeout de 3s
+            successThreshold: 1       # 1 éxito = pod listo
+            failureThreshold: 3       # 3 fallos = pod no listo
+          
+          # Startup Probe: Verifica si la aplicación ha iniciado correctamente
+          # Útil para aplicaciones que tardan en arrancar
+          startupProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 30      # 30 * 10s = 5 minutos máximo para iniciar
+---
+# ✅ OPTIMIZACIÓN 3: HORIZONTAL POD AUTOSCALER (HPA)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: php-app-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: php-app
+  
+  # Número mínimo y máximo de réplicas
+  minReplicas: 3
+  maxReplicas: 10
+  
+  # Métricas para escalar
+  metrics:
+  
+  # Métrica 1: CPU promedio
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        # Escala cuando CPU promedio > 70%
+        averageUtilization: 70
+  
+  # Métrica 2: Memoria promedio
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        # Escala cuando memoria promedio > 80%
+        averageUtilization: 80
+  
+  # Comportamiento de escalado
+  behavior:
+    scaleDown:
+      # Política para reducir pods
+      stabilizationWindowSeconds: 300  # Espera 5 minutos antes de reducir
+      policies:
+      - type: Percent
+        value: 50                      # Reduce máximo 50% de pods
+        periodSeconds: 60              # En ventana de 60s
+      - type: Pods
+        value: 2                       # O reduce máximo 2 pods
+        periodSeconds: 60              # En ventana de 60s
+      selectPolicy: Min                # Usa la política más conservadora
+    
+    scaleUp:
+      # Política para aumentar pods
+      stabilizationWindowSeconds: 0    # Sin espera para aumentar
+      policies:
+      - type: Percent
+        value: 100                     # Aumenta máximo 100% de pods
+        periodSeconds: 15              # En ventana de 15s
+      - type: Pods
+        value: 4                       # O aumenta máximo 4 pods
+        periodSeconds: 15              # En ventana de 15s
+      selectPolicy: Max                # Usa la política más agresiva

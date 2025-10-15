@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: php-app-config
+  namespace: php-mysql
+data:
+  index.php: |
+    <?php
+    echo "<h1>Aplicación PHP en Kubernetes</h1>";
+    echo "<p>PHP Version: " . phpversion() . "</p>";
+    
+    // Verificar extensiones PHP
+    echo "<h2>Extensiones PHP cargadas:</h2>";
+    echo "<ul>";
+    if (extension_loaded('mysqli')) {
+        echo "<li>✓ MySQLi: Cargada</li>";
+    } else {
+        echo "<li>✗ MySQLi: NO cargada</li>";
+    }
+    if (extension_loaded('pdo')) {
+        echo "<li>✓ PDO: Cargada</li>";
+    } else {
+        echo "<li>✗ PDO: NO cargada</li>";
+    }
+    if (extension_loaded('pdo_mysql')) {
+        echo "<li>✓ PDO MySQL: Cargada</li>";
+    } else {
+        echo "<li>✗ PDO MySQL: NO cargada</li>";
+    }
+    echo "</ul>";
+    
+    // Intentar conexión a la base de datos
+    echo "<h2>Prueba de conexión a MySQL:</h2>";
+    try {
+        $host = $_ENV['MYSQL_HOST'] ?? 'mysql-service';
+        $dbname = $_ENV['MYSQL_DB'] ?? 'app_db';
+        $username = $_ENV['MYSQL_USER'] ?? 'app_user';
+        $password = $_ENV['MYSQL_PASSWORD'] ?? 'app_password';
+        
+        $dsn = "mysql:host=$host;dbname=$dbname;charset=utf8mb4";
+        $pdo = new PDO($dsn, $username, $password);
+        echo "<p style='color: green;'>✓ Conexión exitosa a la base de datos!</p>";
+        echo "<p>Host: $host</p>";
+        echo "<p>Base de datos: $dbname</p>";
+    } catch (PDOException $e) {
+        echo "<p style='color: red;'>✗ Error de conexión: " . $e->getMessage() . "</p>";
+    }
+    ?>
+  config.php: |
+    <?php
+    $host = $_ENV['MYSQL_HOST'] ?? 'mysql-service';
+    $dbname = $_ENV['MYSQL_DB'] ?? 'app_db';
+    $username = $_ENV['MYSQL_USER'] ?? 'app_user';
+    $password = $_ENV['MYSQL_PASSWORD'] ?? 'app_password';
+    
+    $dsn = "mysql:host=$host;dbname=$dbname;charset=utf8mb4";
+    ?>
+metadata:
+    name: mysql-initdb
+    namespace: php-mysql
+data:
+    init.sql: |
+        SET NAMES utf8mb4;
+        SET CHARACTER SET utf8mb4;
+        SET COLLATION_CONNECTION = utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            nombre VARCHAR(100) NOT NULL,
+            email VARCHAR(100) UNIQUE NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS mensajes (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            usuario_id INT NOT NULL,
+            contenido TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        INSERT INTO usuarios (nombre, email) VALUES 
+        ('Juan Pérez', 'juan@example.com'),
+        ('María García', 'maria@example.com'),
+        ('Carlos López', 'carlos@example.com'),
+        ('Ana Martínez', 'ana@example.com'),
+        ('Pedro Rodríguez', 'pedro@example.com');
+
+        INSERT INTO mensajes (usuario_id, contenido) VALUES 
+        (1, 'Hola, este es mi primer mensaje'),
+        (2, 'La aplicación está funcionando'),
+        (1, 'Segundo mensaje del usuario Juan'),
+        (3, 'Mensaje de prueba desde Carlos'),
+        (2, 'Seguimos probando');
