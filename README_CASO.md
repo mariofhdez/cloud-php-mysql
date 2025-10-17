@@ -6,6 +6,32 @@ tiene configuradas tres réplicas, pero los usuarios siguen reportando problemas
 de lentitud. Además, al revisar los logs, se observa que los pods están alcanzando
 altos niveles de uso de CPU.
 
+## 🏗️ Preparación del entorno de pruebas y monitoreo
+
+Para obtener información relevante del caso acerca del comportamiento de la aplicación y poder evidenciar el funcionamiento de HPA es necesario haber desplegado la aplicación con Kubernetes bajo la configuración de Minikube, ver [***README.md***](README.md) - *3. Despliegue con Minikube*
+
+```bash
+
+# Activación de los addons necesarios: metrics-server
+minikube addons enable metrics-server
+
+# Consultar los servicios activos
+kubectl get all -n php-mysql # El output serán 3 replicas activas de la app
+
+# Ejecutar pruebas con Apache Bench
+```
+### Ejecución de pruebas
+
+Las pruebas podrán ejecutarse en sistemas unix usando la librería de Apache Bench, si cuenta con distribución Windows se podrá instalar XAMPP y usar la Shell incorporada a dicho sistema. 
+
+![Ejemplo shell de xampp](./assets/xampp.png)
+
+```bash
+# Simulación de carga
+ab -n 10000 -c 100 http://localhost:8080
+```
+
+
 ## 🔬 Análisis del caso
 ## Problemas en la configuración de Kubernetes
 

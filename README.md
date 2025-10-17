@@ -38,11 +38,11 @@ docker-compose up -d
 # http://localhost:8080
 ```
 
-### 2. Despliegue con Kubernetes
+### 2. Despliegue con Kubernetes (No es recomendado para pruebas de rendimiento)
 
 ```bash
 # Construir imagen
-docker build -t php:latest .
+docker build -t php-app:latest .
 
 # Configuración del registry local
 # Para levantar un registro local
@@ -81,11 +81,11 @@ kubectl get services -n php-mysql
 ```
 
 
-### 3. Despliegue con Minikube
+### 3. Despliegue con Minikube (Recomendado)
 
 ```bash
 # Construir imagen
-docker build -t php:latest .
+docker build -t php-app:latest .
 
 # Activar minikube
 kubectl minikube start --driver=docker
@@ -162,6 +162,9 @@ minikube stop
 
 ## Limpiar la configuración de minikube
 minikube delete --all --purge
+
+# Limpiar configuraciones de docker
+docker system prune -a --volumes -f
 
 ```
 
