@@ -108,6 +108,7 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: php-app-hpa
+  namespace: php-mysql
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
@@ -128,7 +129,7 @@ spec:
       target:
         type: Utilization
         # Escala cuando CPU promedio > 70%
-        averageUtilization: 70
+        averageUtilization: 30
   
   # Métrica 2: Memoria promedio
   - type: Resource
@@ -137,7 +138,7 @@ spec:
       target:
         type: Utilization
         # Escala cuando memoria promedio > 80%
-        averageUtilization: 80
+        averageUtilization: 40
   
   # Comportamiento de escalado
   behavior:
